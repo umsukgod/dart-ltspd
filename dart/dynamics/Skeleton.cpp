@@ -3736,6 +3736,20 @@ void Skeleton::setSPDTarget(const Eigen::VectorXd& _target, double kp, double kd
     mBodyNode->getParentJoint()->setSPDParam(kd * dt);
 }
 
+void Skeleton::setSPDTarget(const Eigen::VectorXd& _target, const Eigen::VectorXd& kps, const Eigen::VectorXd& kds)
+{
+  double dt = getTimeStep();
+  Eigen::VectorXd _forces = kps.cwiseProduct(getPositionDifferences(_target, getPositions())) - (kps * dt + kds).cwiseProduct(getVelocities());
+  _forces.head(6).setZero();
+  setForces(_forces);
+
+  for (auto & mBodyNode : mSkelCache.mBodyNodes)
+  {
+
+    mBodyNode->getParentJoint()->setSPDParam(kds[mBodyNode->getParentJoint()->getDof(0)->getIndexInSkeleton()] * dt);
+  }
+}
+
 //==============================================================================
 Eigen::VectorXd Skeleton::getSPDForces(const Eigen::VectorXd& _target, double kp, double kd, void* solver)
 {
