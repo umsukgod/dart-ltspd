@@ -3781,6 +3781,36 @@ Eigen::VectorXd Skeleton::getSPDForces(const Eigen::VectorXd& _target, double kp
   return getForces();
 }
 
+Eigen::VectorXd Skeleton::getSPDForces(const Eigen::VectorXd& _target, const Eigen::VectorXd& kps, const Eigen::VectorXd& kds, void* solver)
+{
+  Eigen::VectorXd _velocities_backup = getVelocities();
+
+  setSPDTarget(_target, kps, kds);
+
+  computeForwardDynamics();
+  integrateVelocities(getTimeStep());
+
+  // Detect activated constraints and compute constraint impulses
+  ((dart::constraint::ConstraintSolver*)solver)->solve();
+
+  // Compute velocity changes given constraint impulses
+  if (isImpulseApplied())
+  {
+    computeImpulseForwardDynamics();
+    setImpulseApplied(false);
+  }
+
+  Eigen::VectorXd _forces = getForces();
+  _forces.head(6).setZero();
+
+  for (auto & mBodyNode : mSkelCache.mBodyNodes)
+    mBodyNode->getParentJoint()->setSPDParam(0.0);
+
+  setVelocities(_velocities_backup);
+
+  return getForces();
+}
+
 //==============================================================================
 void Skeleton::computeForwardDynamics()
 {
